@@ -22,7 +22,21 @@ export type Report = {
 };
 
 // Set NEXT_PUBLIC_API_URL to the backend's URL (e.g. on Vercel). It's baked in at build time.
-const API_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(/\/$/, "");
+// Tolerates common paste mistakes: missing https://, trailing slash, or a pasted /health or /docs path.
+function normaliseApiUrl(raw: string | undefined): string {
+  let url = (raw || "").trim();
+  if (!url) return "http://localhost:8000";
+  if (!/^https?:\/\//i.test(url)) {
+    url = (/^(localhost|127\.0\.0\.1)(:|$)/.test(url) ? "http://" : "https://") + url;
+  }
+  try {
+    return new URL(url).origin; // keeps only scheme://host[:port]
+  } catch {
+    return url.replace(/\/$/, "");
+  }
+}
+
+const API_URL = normaliseApiUrl(process.env.NEXT_PUBLIC_API_URL);
 
 async function post<T>(path: string, body: unknown): Promise<T> {
   let res: Response;
@@ -37,7 +51,7 @@ async function post<T>(path: string, body: unknown): Promise<T> {
   }
 
   if (!res.ok) {
-    let detail = `Server error (${res.status}).`;
+    let detail = `Server error (${res.status}) from ${API_URL}${path}.`;
     try {
       const data = await res.json();
       if (typeof data.detail === "string") detail = data.detail;
