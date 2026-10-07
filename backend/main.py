@@ -38,11 +38,18 @@ MAX_HISTORY = 40  # far more than a real interview (max 8 questions) needs
 # Hosts like Render set PORT; locally it defaults to 8000.
 PORT = int(os.getenv("PORT", "8000"))
 
-# Local frontends on any port are always allowed. Deployed frontends are added via env:
-#   ALLOWED_ORIGINS=https://ai-interview-coach.vercel.app,https://my-domain.com
+# Local frontends on any port are always allowed. Deployed frontends are added via env
+# (comma-separated, no trailing slash; "*" matches any run of letters, digits and dashes):
+#   ALLOWED_ORIGINS=https://ai-interview-coach.vercel.app,https://ai-interview-coach-*.vercel.app
 LOCAL_ORIGIN_REGEX = r"http://(localhost|127\.0\.0\.1)(:\d+)?"
 ALLOWED_ORIGINS = [o.strip().rstrip("/") for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-ORIGIN_REGEX = "^(" + "|".join([LOCAL_ORIGIN_REGEX] + [re.escape(o) for o in ALLOWED_ORIGINS]) + ")$"
+
+
+def _origin_pattern(origin: str) -> str:
+    return "[a-z0-9-]*".join(re.escape(part) for part in origin.lower().split("*"))
+
+
+ORIGIN_REGEX = "^(" + "|".join([LOCAL_ORIGIN_REGEX] + [_origin_pattern(o) for o in ALLOWED_ORIGINS]) + ")$"
 
 
 # ---------- Startup banner ----------
